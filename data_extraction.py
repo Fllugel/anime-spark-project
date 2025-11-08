@@ -81,7 +81,7 @@ def validate_dataframe(df):
 
     # Перевіряємо на null значення в ключових колонках
     print("\n🔍 Перевірка на null значення в ключових колонках:")
-    key_columns = ['anime_id', 'name', 'rating']
+    key_columns = ['anime_id', 'title', 'score']
     for col_name in key_columns:
         if col_name in df.columns:
             null_count = df.filter(isnull(col(col_name))).count()
@@ -89,7 +89,7 @@ def validate_dataframe(df):
 
     # Показуємо статистику по числовим колонкам
     print("\n📊 Статистика по числовим колонкам:")
-    numeric_columns = ['episodes', 'rating', 'members', 'popularity', 'favorites']
+    numeric_columns = ['anime_id', 'my_score', 'user_id', 'scored_by', 'rank', 'popularity']
     for col_name in numeric_columns:
         if col_name in df.columns:
             try:
