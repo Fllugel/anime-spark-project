@@ -1,0 +1,101 @@
+{
+  "row_count": 35305695,
+  "column_count": 13,
+  "columns": [
+    "username",
+    "anime_id",
+    "my_score",
+    "user_id",
+    "gender",
+    "title",
+    "type",
+    "source",
+    "score",
+    "scored_by",
+    "rank",
+    "popularity",
+    "genre"
+  ],
+  "schema": [
+    {
+      "name": "username",
+      "type": "StringType()",
+      "nullable": true
+    },
+    {
+      "name": "anime_id",
+      "type": "IntegerType()",
+      "nullable": true
+    },
+    {
+      "name": "my_score",
+      "type": "IntegerType()",
+      "nullable": true
+    },
+    {
+      "name": "user_id",
+      "type": "IntegerType()",
+      "nullable": true
+    },
+    {
+      "name": "gender",
+      "type": "StringType()",
+      "nullable": true
+    },
+    {
+      "name": "title",
+      "type": "StringType()",
+      "nullable": true
+    },
+    {
+      "name": "type",
+      "type": "StringType()",
+      "nullable": true
+    },
+    {
+      "name": "source",
+      "type": "StringType()",
+      "nullable": true
+    },
+    {
+      "name": "score",
+      "type": "StringType()",
+      "nullable": true
+    },
+    {
+      "name": "scored_by",
+      "type": "DoubleType()",
+      "nullable": true
+    },
+    {
+      "name": "rank",
+      "type": "DoubleType()",
+      "nullable": true
+    },
+    {
+      "name": "popularity",
+      "type": "DoubleType()",
+      "nullable": true
+    },
+    {
+      "name": "genre",
+      "type": "StringType()",
+      "nullable": true
+    }
+  ],
+  "null_counts": {
+    "username": 256,
+    "anime_id": 0,
+    "my_score": 0,
+    "user_id": 0,
+    "gender": 0,
+    "title": 0,
+    "type": 0,
+    "source": 0,
+    "score": 0,
+    "scored_by": 0,
+    "rank": 751600,
+    "popularity": 370,
+    "genre": 2267
+  }
+}
