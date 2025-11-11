@@ -5,7 +5,7 @@
 
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import (
-    col, count, sum as spark_sum, avg, when, lag, lead
+    col, count, sum as spark_sum, avg, when, lag, lead, row_number
 )
 from pyspark.sql.window import Window
 
@@ -261,6 +261,241 @@ def run_artem_questions(fact_ratings, dim_user, dim_anime, dim_date, results_pat
         
     except Exception as e:
         print(f"❌ Помилка при виконанні питань від Artem: {str(e)}")
+        import traceback
+        traceback.print_exc()
+    
+    return results
+
+
+# ============================================================================
+# ПИТАННЯ ВІД BOHDAN (Аналітик 2)
+# ============================================================================
+
+def question_1_bohdan(dim_anime):
+    """
+    (Filters) Показати всі аніме, джерелом яких є "Manga" (Source),
+    але які не є "TV" (Type).
+    """
+    print("\n" + "=" * 60)
+    print("❓ Питання 1 від Bohdan (Filters)")
+    print("=" * 60)
+    print("Аніме з джерелом 'Manga', але не типу 'TV'")
+    
+    result = dim_anime \
+        .filter((col("Source") == "Manga") & (col("Type") != "TV")) \
+        .select("Anime_SK", "Anime_ID", "Name", "Type", "Source", "Avg_Score") \
+        .orderBy("Avg_Score", ascending=False)
+    
+    print(f"\nЗнайдено {result.count()} аніме")
+    result.show(20, truncate=False)
+    return result
+
+
+def question_2_bohdan(fact_ratings, dim_anime, dim_user):
+    """
+    (JOIN) Які аніме (Dim_Anime.Name) отримали оцінку 1 (Fact.User_Rating)
+    від користувачів жіночої статі (Dim_User.Gender)?
+    """
+    print("\n" + "=" * 60)
+    print("❓ Питання 2 від Bohdan (JOIN)")
+    print("=" * 60)
+    print("Аніме з оцінкою 1 від користувачів жіночої статі")
+    
+    result = fact_ratings \
+        .filter(col("User_Rating") == 1) \
+        .join(dim_user, on="User_SK", how="inner") \
+        .filter(col("Gender") == "Female") \
+        .join(dim_anime, on="Anime_SK", how="inner") \
+        .select("Name", "Anime_ID", "Type", "Avg_Score") \
+        .distinct() \
+        .orderBy("Name")
+    
+    print(f"\nЗнайдено {result.count()} унікальних аніме")
+    result.show(20, truncate=False)
+    return result
+
+
+def question_3_bohdan(fact_ratings, dim_anime):
+    """
+    (JOIN) Показати всі оцінки, де користувач був "фанатом"
+    (Fact.Is_Above_Average = 1), для аніме типу "Movie" (Dim_Anime.Type).
+    """
+    print("\n" + "=" * 60)
+    print("❓ Питання 3 від Bohdan (JOIN)")
+    print("=" * 60)
+    print("Оцінки 'фанатів' для аніме типу 'Movie'")
+    
+    result = fact_ratings \
+        .filter(col("Is_Above_Average") == 1) \
+        .join(dim_anime, on="Anime_SK", how="inner") \
+        .filter(col("Type") == "Movie") \
+        .select(
+            "User_SK",
+            "Anime_SK",
+            "Name",
+            "User_Rating",
+            "Is_Above_Average",
+            "Type",
+            "Avg_Score"
+        ) \
+        .orderBy("User_Rating", ascending=False)
+    
+    print(f"\nЗнайдено {result.count()} оцінок")
+    result.show(20, truncate=False)
+    return result
+
+
+def question_4_bohdan(fact_ratings, dim_user, dim_anime):
+    """
+    (JOIN) Які користувачі (Dim_User.Username) з Канади (Dim_User.Location)
+    поставили "високі оцінки" (Fact.Is_High_Rating = 1) для аніме студії
+    "Production I.G" (Dim_Anime.Studios)?
+    """
+    print("\n" + "=" * 60)
+    print("❓ Питання 4 від Bohdan (JOIN)")
+    print("=" * 60)
+    print("Користувачі з Канади з високими оцінками для студії 'Production I.G'")
+    
+    result = fact_ratings \
+        .filter(col("Is_High_Rating") == 1) \
+        .join(dim_user, on="User_SK", how="inner") \
+        .filter(col("Location") == "Canada") \
+        .join(dim_anime, on="Anime_SK", how="inner") \
+        .filter(col("Studios").contains("Production I.G")) \
+        .select(
+            "Username",
+            "User_ID",
+            "Location",
+            "Name",
+            "Studios",
+            "User_Rating"
+        ) \
+        .distinct() \
+        .orderBy("Username")
+    
+    print(f"\nЗнайдено {result.count()} унікальних користувачів")
+    result.show(20, truncate=False)
+    return result
+
+
+def question_5_bohdan(fact_ratings, dim_anime):
+    """
+    (GROUP BY) Яка загальна кількість "високих оцінок" (SUM(Fact.Is_High_Rating))
+    згрупована за типом джерела (Dim_Anime.Source)?
+    """
+    print("\n" + "=" * 60)
+    print("❓ Питання 5 від Bohdan (GROUP BY)")
+    print("=" * 60)
+    print("Загальна кількість високих оцінок за типом джерела")
+    
+    result = fact_ratings \
+        .join(dim_anime, on="Anime_SK", how="inner") \
+        .filter(col("Source").isNotNull()) \
+        .groupBy("Source") \
+        .agg(
+            spark_sum("Is_High_Rating").alias("total_high_ratings"),
+            count("*").alias("total_ratings")
+        ) \
+        .withColumn(
+            "high_rating_percentage",
+            (col("total_high_ratings") / col("total_ratings") * 100)
+        ) \
+        .orderBy(col("total_high_ratings").desc())
+    
+    result.show(truncate=False)
+    return result
+
+
+def question_6_bohdan(dim_anime):
+    """
+    (Window Functions) Знайти топ-3 аніме (за Avg_Score) для кожної студії
+    (PARTITION BY Dim_Anime.Studios), використовуючи ROW_NUMBER().
+    """
+    print("\n" + "=" * 60)
+    print("❓ Питання 6 від Bohdan (Window Functions)")
+    print("=" * 60)
+    print("Топ-3 аніме за середньою оцінкою для кожної студії")
+    
+    # Створюємо window для ранжування аніме в межах кожної студії
+    window_spec = Window.partitionBy("Studios").orderBy(col("Avg_Score").desc())
+    
+    result = dim_anime \
+        .filter(col("Studios").isNotNull() & col("Avg_Score").isNotNull()) \
+        .withColumn("rank", row_number().over(window_spec)) \
+        .filter(col("rank") <= 3) \
+        .select(
+            "Studios",
+            "Name",
+            "Anime_ID",
+            "Type",
+            "Avg_Score",
+            "Popularity_Rank",
+            "rank"
+        ) \
+        .orderBy("Studios", "rank")
+    
+    print(f"\nЗнайдено {result.count()} записів (топ-3 для кожної студії)")
+    result.show(30, truncate=False)
+    return result
+
+
+def run_bohdan_questions(fact_ratings, dim_user, dim_anime, dim_date, results_path="results"):
+    """
+    Запускає всі бізнес-питання від Bohdan та зберігає результати у CSV.
+    
+    Args:
+        fact_ratings: DataFrame з таблицею фактів
+        dim_user: DataFrame з виміром користувачів
+        dim_anime: DataFrame з виміром аніме
+        dim_date: DataFrame з виміром дати
+        results_path: Шлях для збереження результатів
+    """
+    print("\n" + "=" * 60)
+    print("📊 БІЗНЕС-ПИТАННЯ ВІД BOHDAN (Аналітик 2)")
+    print("=" * 60)
+    
+    results = {}
+    
+    try:
+        # Питання 1: Filters
+        results['bohdan_q1'] = question_1_bohdan(dim_anime)
+        
+        # Питання 2: JOIN
+        results['bohdan_q2'] = question_2_bohdan(fact_ratings, dim_anime, dim_user)
+        
+        # Питання 3: JOIN
+        results['bohdan_q3'] = question_3_bohdan(fact_ratings, dim_anime)
+        
+        # Питання 4: JOIN
+        results['bohdan_q4'] = question_4_bohdan(fact_ratings, dim_user, dim_anime)
+        
+        # Питання 5: GROUP BY
+        results['bohdan_q5'] = question_5_bohdan(fact_ratings, dim_anime)
+        
+        # Питання 6: Window Functions
+        results['bohdan_q6'] = question_6_bohdan(dim_anime)
+        
+        # Зберігаємо результати у CSV
+        print("\n" + "=" * 60)
+        print("💾 ЗБЕРЕЖЕННЯ РЕЗУЛЬТАТІВ У CSV")
+        print("=" * 60)
+        
+        import os
+        os.makedirs(results_path, exist_ok=True)
+        
+        for key, df in results.items():
+            try:
+                output_file = f"{results_path}/{key}.csv"
+                # Використовуємо coalesce(1) для створення одного файлу
+                df.coalesce(1).write.mode("overwrite").option("header", "true").csv(output_file)
+                print(f"✅ Збережено: {output_file}")
+            except Exception as e:
+                print(f"⚠️  Помилка збереження {key}: {e}")
+        
+        print(f"\n✅ Всі результати збережено в папці: {results_path}/")
+        
+    except Exception as e:
+        print(f"❌ Помилка при виконанні питань від Bohdan: {str(e)}")
         import traceback
         traceback.print_exc()
     

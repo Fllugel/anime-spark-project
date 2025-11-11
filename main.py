@@ -15,7 +15,7 @@ from data_extraction import (
     save_star_schema_to_parquet,
     load_star_schema_from_parquet
 )
-from business_questions import run_artem_questions
+from business_questions import run_artem_questions, run_bohdan_questions
 
 
 def main():
@@ -94,6 +94,12 @@ def main():
             
             # Бізнес-питання від Artem (Аналітик 4)
             results_artem = run_artem_questions(
+                fact_ratings, dim_user, dim_anime, dim_date,
+                results_path=f"{data_path}/results"
+            )
+            
+            # Бізнес-питання від Bohdan (Аналітик 2)
+            results_bohdan = run_bohdan_questions(
                 fact_ratings, dim_user, dim_anime, dim_date,
                 results_path=f"{data_path}/results"
             )
