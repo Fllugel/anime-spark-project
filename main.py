@@ -15,6 +15,7 @@ from data_extraction import (
     save_star_schema_to_parquet,
     load_star_schema_from_parquet
 )
+from business_questions import run_artem_questions
 
 
 def main():
@@ -86,16 +87,26 @@ def main():
             print("\n" + "=" * 60)
             print("❓ БІЗНЕС-ПИТАННЯ")
             print("=" * 60)
-            print("\n📝 Тут будуть додаватися бізнес-питання до даних...")
-            print("   Використовуйте dim_user, dim_anime, dim_date, fact_ratings для аналізу.\n")
             
             # ============================================================
-            # ТУТ БУДУТЬ ДОДАВАТИСЯ БІЗНЕС-ПИТАННЯ
+            # БІЗНЕС-ПИТАННЯ ВІД РІЗНИХ ЧЛЕНІВ КОМАНДИ
             # ============================================================
             
-            # Приклад: Показуємо статистику по оцінкам
-            print("📊 Приклад: Статистика по оцінкам користувачів")
-            fact_ratings.select("User_Rating").describe().show()
+            # Бізнес-питання від Artem (Аналітик 4)
+            results_artem = run_artem_questions(
+                fact_ratings, dim_user, dim_anime, dim_date,
+                results_path=f"{data_path}/results"
+            )
+            
+            # ============================================================
+            # ТУТ МОЖУТЬ ДОДАВАТИСЯ ПИТАННЯ ВІД ІНШИХ ЧЛЕНІВ КОМАНДИ
+            # ============================================================
+            # Приклад:
+            # from business_questions import run_teammate_name_questions
+            # results_teammate = run_teammate_name_questions(
+            #     fact_ratings, dim_user, dim_anime, dim_date,
+            #     results_path=f"{data_path}/results"
+            # )
             
             print("\n✅ Всі кроки виконано успішно!")
 
