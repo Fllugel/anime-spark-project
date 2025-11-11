@@ -1,0 +1,162 @@
+{
+  "statistics": {
+    "anime_id": {
+      "count": 35305695,
+      "mean": 11481.590444006271,
+      "stddev": 11217.19285030339,
+      "min": 1.0,
+      "max": 37863.0,
+      "null_count": 0,
+      "null_percentage": 0.0
+    },
+    "my_score": {
+      "count": 35305695,
+      "mean": 4.591388188222892,
+      "stddev": 3.909502686449956,
+      "min": 0.0,
+      "max": 10.0,
+      "null_count": 0,
+      "null_percentage": 0.0
+    },
+    "user_id": {
+      "count": 35305695,
+      "mean": 1863855.894973488,
+      "stddev": 1963096.0784954347,
+      "min": 1.0,
+      "max": 7251737.0,
+      "null_count": 0,
+      "null_percentage": 0.0
+    },
+    "scored_by": {
+      "count": 35305695,
+      "mean": 109645.6659636643,
+      "stddev": 147933.39164868114,
+      "min": 6.42,
+      "max": 1009477.0,
+      "null_count": 0,
+      "null_percentage": 0.0
+    },
+    "rank": {
+      "count": 34554095,
+      "mean": 2049.8280988114434,
+      "stddev": 1997.4709825004584,
+      "min": 1.0,
+      "max": 23432.0,
+      "null_count": 751600,
+      "null_percentage": 2.128835022225168
+    },
+    "popularity": {
+      "count": 35305325,
+      "mean": 1336.948640722044,
+      "stddev": 1564.5068863924698,
+      "min": 1.0,
+      "max": 10265.0,
+      "null_count": 370,
+      "null_percentage": 0.001047989566555764
+    }
+  },
+  "analysis": {
+    "anime_id": {
+      "data_quality": {
+        "null_percentage": 0.0,
+        "assessment": "Відмінна - немає пропущених значень"
+      },
+      "distribution": {
+        "coefficient_of_variation": 97.69720410258228,
+        "assessment": "Висока варіативність - дані дуже різноманітні",
+        "range": 37862.0,
+        "min": 1.0,
+        "max": 37863.0
+      },
+      "insights": [
+        "Середнє значення: 11481.59",
+        "Стандартне відхилення: 11217.19"
+      ]
+    },
+    "my_score": {
+      "data_quality": {
+        "null_percentage": 0.0,
+        "assessment": "Відмінна - немає пропущених значень"
+      },
+      "distribution": {
+        "coefficient_of_variation": 85.14859833629399,
+        "assessment": "Висока варіативність - дані дуже різноманітні",
+        "range": 10.0,
+        "min": 0.0,
+        "max": 10.0
+      },
+      "insights": [
+        "Середнє значення: 4.59",
+        "Стандартне відхилення: 3.91"
+      ]
+    },
+    "user_id": {
+      "data_quality": {
+        "null_percentage": 0.0,
+        "assessment": "Відмінна - немає пропущених значень"
+      },
+      "distribution": {
+        "coefficient_of_variation": 105.32445581171706,
+        "assessment": "Висока варіативність - дані дуже різноманітні",
+        "range": 7251736.0,
+        "min": 1.0,
+        "max": 7251737.0
+      },
+      "insights": [
+        "Середнє значення: 1863855.89",
+        "Стандартне відхилення: 1963096.08"
+      ]
+    },
+    "scored_by": {
+      "data_quality": {
+        "null_percentage": 0.0,
+        "assessment": "Відмінна - немає пропущених значень"
+      },
+      "distribution": {
+        "coefficient_of_variation": 134.91950671146918,
+        "assessment": "Висока варіативність - дані дуже різноманітні",
+        "range": 1009470.58,
+        "min": 6.42,
+        "max": 1009477.0
+      },
+      "insights": [
+        "Середнє значення: 109645.67",
+        "Стандартне відхилення: 147933.39"
+      ]
+    },
+    "rank": {
+      "data_quality": {
+        "null_percentage": 2.128835022225168,
+        "assessment": "Добра - мінімальна кількість пропущених значень"
+      },
+      "distribution": {
+        "coefficient_of_variation": 97.4457801441329,
+        "assessment": "Висока варіативність - дані дуже різноманітні",
+        "range": 23431.0,
+        "min": 1.0,
+        "max": 23432.0
+      },
+      "insights": [
+        "Середнє значення: 2049.83",
+        "Стандартне відхилення: 1997.47"
+      ]
+    },
+    "popularity": {
+      "data_quality": {
+        "null_percentage": 0.001047989566555764,
+        "assessment": "Добра - мінімальна кількість пропущених значень"
+      },
+      "distribution": {
+        "coefficient_of_variation": 117.02071708211086,
+        "assessment": "Висока варіативність - дані дуже різноманітні",
+        "range": 10264.0,
+        "min": 1.0,
+        "max": 10265.0
+      },
+      "insights": [
+        "Середнє значення: 1336.95",
+        "Стандартне відхилення: 1564.51"
+      ]
+    }
+  }
+}
