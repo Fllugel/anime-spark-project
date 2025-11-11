@@ -15,7 +15,7 @@ from data_extraction import (
     save_star_schema_to_parquet,
     load_star_schema_from_parquet
 )
-from business_questions import run_artem_questions
+from business_questions import run_artem_questions, run_oskar_questions
 
 
 def main():
@@ -32,7 +32,17 @@ def main():
             .config("spark.executor.extraJavaOptions", "--add-opens=java.base/java.nio=ALL-UNNAMED --add-opens=java.base/sun.nio.ch=ALL-UNNAMED") \
             .config("spark.sql.legacy.timeParserPolicy", "LEGACY") \
             .config("spark.sql.parquet.datetimeRebaseModeInWrite", "LEGACY") \
+            .config("spark.driver.memory", "2g") \
+            .config("spark.executor.memory", "2g") \
+            .config("spark.sql.execution.arrow.pyspark.enabled", "false") \
+            .config("spark.sql.adaptive.enabled", "true") \
+            .config("spark.sql.adaptive.coalescePartitions.enabled", "true") \
+            .config("spark.serializer", "org.apache.spark.serializer.KryoSerializer") \
+            .config("spark.sql.execution.arrow.maxRecordsPerBatch", "1000") \
             .getOrCreate()
+        
+        # Налаштовуємо рівень логування для приховування попереджень про Window operations
+        spark.sparkContext.setLogLevel("ERROR")
 
         try:
             # Шлях до даних (працює як локально, так і в Docker з монтованим volume)
@@ -94,6 +104,12 @@ def main():
             
             # Бізнес-питання від Artem (Аналітик 4)
             results_artem = run_artem_questions(
+                fact_ratings, dim_user, dim_anime, dim_date,
+                results_path=f"{data_path}/results"
+            )
+            
+            # Бізнес-питання від Oskar
+            results_oskar = run_oskar_questions(
                 fact_ratings, dim_user, dim_anime, dim_date,
                 results_path=f"{data_path}/results"
             )
