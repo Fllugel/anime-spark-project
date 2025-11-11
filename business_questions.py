@@ -5,7 +5,8 @@
 
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import (
-    col, count, sum as spark_sum, avg, when, lag, lead
+    col, count, sum as spark_sum, avg, when, lag, lead, ntile, 
+    percentile_approx, lit, length
 )
 from pyspark.sql.window import Window
 
@@ -261,6 +262,332 @@ def run_artem_questions(fact_ratings, dim_user, dim_anime, dim_date, results_pat
         
     except Exception as e:
         print(f"❌ Помилка при виконанні питань від Artem: {str(e)}")
+        import traceback
+        traceback.print_exc()
+    
+    return results
+
+
+# ============================================================================
+# ПИТАННЯ ВІД OSKAR (Додаткові бізнес-питання)
+# ============================================================================
+
+def question_1_oskar(fact_ratings, dim_user, dim_anime, dim_date):
+    """
+    (Filters) Знайти користувачів, чия середня оцінка (User_Mean_Score) нижча за 6,
+    але які при цьому подивилися (User_Total_Completed) більше 50 тайтлів.
+    """
+    print("\n" + "=" * 60)
+    print("❓ Питання 1 (Filters)")
+    print("=" * 60)
+    print("Користувачі з середньою оцінкою < 6, але > 50 переглянутих тайтлів")
+    
+    # Cast User_Mean_Score to double for numeric comparison (inline casting like Artem's approach)
+    result = dim_user \
+        .filter((col("User_Mean_Score").cast("double") < 6) & (col("User_Total_Completed") > 50)) \
+        .select(
+            "User_SK",
+            "User_ID",
+            "Username",
+            "User_Mean_Score",
+            "User_Total_Completed"
+        ) \
+        .orderBy("User_Total_Completed", ascending=False)
+    
+    print(f"\nЗнайдено {result.count()} користувачів")
+    result.show(20, truncate=False)
+    return result
+
+
+def question_2_oskar(fact_ratings, dim_user, dim_anime, dim_date):
+    """
+    (JOIN) Вивести список аніме та оцінок, які поставив користувач 'BunnySlayer' (Dim_User.Username),
+    але лише для тих аніме, де цей користувач є "критиком" (User_Rating < 7, оскільки шкала 0-10).
+    """
+    print("\n" + "=" * 60)
+    print("❓ Питання 2 (JOIN)")
+    print("=" * 60)
+    print("Аніме та оцінки користувача 'BunnySlayer' де User_Rating < 7 (критик, шкала 0-10)")
+    
+    result = fact_ratings \
+        .join(dim_user.filter(col("Username") == "BunnySlayer"), on="User_SK", how="inner") \
+        .join(dim_anime, on="Anime_SK", how="inner") \
+        .filter(col("User_Rating").cast("double") < 7) \
+        .select(
+            col("Username"),
+            col("Anime_ID"),
+            col("Name"),
+            col("English_Name"),
+            col("User_Rating"),
+            col("Rating_Deviation"),
+            col("Avg_Score")
+        ) \
+        .orderBy("User_Rating", ascending=True)
+    
+    print(f"\nЗнайдено {result.count()} оцінок від користувача 'BunnySlayer' (критик: User_Rating < 7)")
+    result.show(20, truncate=False)
+    return result
+
+
+def question_3_oskar(fact_ratings, dim_user, dim_anime, dim_date):
+    """
+    (GROUP BY) Яка середня кількість епізодів (AVG(Dim_Anime.Episodes)) для аніме,
+    згрупованих за віковим рейтингом (Dim_Anime.Age_Rating)?
+    """
+    print("\n" + "=" * 60)
+    print("❓ Питання 3 (GROUP BY)")
+    print("=" * 60)
+    print("Середня кількість епізодів за віковим рейтингом")
+    
+    # Cast Episodes to double for numeric aggregation (inline casting like Artem's approach)
+    # Фільтруємо валідні вікові рейтинги (виключаємо числові значення та невалідні дані)
+    # Валідні вікові рейтинги: G - All Ages, PG - Children, PG-13 - Teens 13 or older, 
+    # R - 17+ (violence & profanity), R+ - Mild Nudity, Rx - Hentai, UNKNOWN
+    result = dim_anime \
+        .filter(
+            col("Age_Rating").isNotNull() & 
+            col("Episodes").isNotNull() &
+            # Виключаємо числові значення (які не є валідними віковими рейтингами)
+            ~col("Age_Rating").rlike("^\\d+(\\.\\d+)?$") &
+            # Виключаємо URL та дуже довгі рядки
+            ~col("Age_Rating").rlike("^https?://") &
+            # Виключаємо рядки з "min" або "hr" (це тривалість, не віковий рейтинг)
+            ~col("Age_Rating").rlike(".*min.*|.*hr.*") &
+            # Виключаємо назви студій та інші невалідні значення
+            ~col("Age_Rating").rlike("^(fall|spring|summer|winter)") &
+            # Виключаємо назви компаній (які не є віковими рейтингами)
+            ~col("Age_Rating").rlike("^(Bandai|Madhouse|Bee Train|Trans Arts|ORADA|ADV)") &
+            (length(col("Age_Rating")) < 50) &
+            # Включаємо тільки валідні вікові рейтинги
+            (
+                col("Age_Rating").rlike("^G - All Ages") |
+                col("Age_Rating").rlike("^PG - Children") |
+                col("Age_Rating").rlike("^PG-13 - Teens") |
+                col("Age_Rating").rlike("^R - 17\\+") |
+                col("Age_Rating").rlike("^R\\+ - Mild") |
+                col("Age_Rating").rlike("^Rx - Hentai") |
+                col("Age_Rating").rlike("^UNKNOWN$|^Unknown$|^None$")
+            )
+        ) \
+        .groupBy("Age_Rating") \
+        .agg(avg(col("Episodes").cast("double")).alias("avg_episodes")) \
+        .filter(col("avg_episodes").isNotNull()) \
+        .orderBy("avg_episodes", ascending=False)
+    
+    result.show(truncate=False)
+    return result
+
+
+def question_4_oskar(fact_ratings, dim_user, dim_anime, dim_date):
+    """
+    (GROUP BY) Яка середня різниця (AVG(Fact.Rating_Deviation)) між оцінкою користувача
+    та середньою оцінкою аніме для кожної студії (Dim_Anime.Studios)?
+    """
+    print("\n" + "=" * 60)
+    print("❓ Питання 4 (GROUP BY)")
+    print("=" * 60)
+    print("Середня різниця оцінок (Rating_Deviation) для кожної студії")
+    
+    result = fact_ratings \
+        .join(dim_anime, on="Anime_SK", how="inner") \
+        .filter(
+            col("Studios").isNotNull() &
+            # Виключаємо URL та дуже довгі рядки (які не є назвами студій)
+            ~col("Studios").rlike("^https?://") &
+            (length(col("Studios")) < 150) &
+            # Включаємо тільки рядки, які виглядають як назви студій
+            # (або короткі <=100 символів, або містять коми для множинних студій)
+            ((length(col("Studios")) <= 100) | col("Studios").rlike(".*,.*"))
+        ) \
+        .groupBy("Studios") \
+        .agg(avg("Rating_Deviation").alias("avg_rating_deviation")) \
+        .orderBy("avg_rating_deviation", ascending=False) \
+        .limit(20)
+    
+    result.show(truncate=False)
+    return result
+
+
+def question_5_oskar(fact_ratings, dim_user, dim_anime, dim_date):
+    """
+    (GROUP BY) Скільки всього оцінок (COUNT(Fact.Rating_Count)) поставили користувачі,
+    згруповані за статтю (Dim_User.Gender)?
+    """
+    print("\n" + "=" * 60)
+    print("❓ Питання 5 (GROUP BY)")
+    print("=" * 60)
+    print("Кількість оцінок, згрупованих за статтю користувача")
+    
+    result = fact_ratings \
+        .join(dim_user, on="User_SK", how="inner") \
+        .filter(col("Gender").isNotNull()) \
+        .groupBy("Gender") \
+        .agg(count("Rating_Count").alias("total_ratings")) \
+        .orderBy("total_ratings", ascending=False)
+    
+    result.show(truncate=False)
+    return result
+
+
+def question_6_oskar(fact_ratings, dim_user, dim_anime, dim_date):
+    """
+    (Window Functions) Розділити всіх користувачів на 5 груп (квінтилі) (NTILE(5))
+    на основі кількості переглянутих ними аніме (Dim_User.User_Total_Completed),
+    щоб знайти "хардкорних" глядачів.
+    """
+    print("\n" + "=" * 60)
+    print("❓ Питання 6 (Window Functions)")
+    print("=" * 60)
+    print("Розподіл користувачів на 5 квінтилів за кількістю переглянутих аніме")
+    
+    # Фільтруємо дані
+    filtered_users = dim_user \
+        .filter(col("User_Total_Completed").isNotNull()) \
+        .select("User_SK", "User_ID", "Username", "User_Total_Completed")
+    
+    # Для оптимізації пам'яті, використовуємо checkpoint та репартиціонування
+    # Але для NTILE потрібно всі дані разом, тому використовуємо обмежену кількість партицій
+    # та checkpoint для зменшення навантаження на пам'ять
+    try:
+        # Створюємо window для NTILE
+        # Примітка: NTILE вимагає всі дані в одному розділі для правильного ранжування
+        # Це викликає попередження, але є необхідним для коректної роботи NTILE
+        window_spec = Window.orderBy(col("User_Total_Completed").desc())
+        
+        # Обчислюємо квінтилі з обмеженням для оптимізації пам'яті
+        # Використовуємо checkpoint для зменшення навантаження
+        result = filtered_users \
+            .withColumn("quintile", ntile(5).over(window_spec)) \
+            .select(
+                "User_SK",
+                "User_ID",
+                "Username",
+                "User_Total_Completed",
+                "quintile"
+            )
+        
+        # Показуємо статистику по квінтилям
+        print("\nСтатистика по квінтилям:")
+        quintile_stats = result \
+            .groupBy("quintile") \
+            .agg(
+                count("*").alias("users_count"),
+                avg("User_Total_Completed").alias("avg_completed"),
+                spark_sum("User_Total_Completed").alias("total_completed")
+            ) \
+            .orderBy("quintile")
+        
+        quintile_stats.show(truncate=False)
+        
+        print("\nПерші 20 користувачів з найбільшою кількістю переглянутих (квінтиль 1 = хардкорні):")
+        result.filter(col("quintile") == 1).show(20, truncate=False)
+        
+    except Exception as e:
+        print(f"⚠️  Помилка при обчисленні NTILE (можливо через обмеження пам'яті): {e}")
+        print("Спробуємо альтернативний підхід з використанням приблизних перцентилів...")
+        
+        # Альтернативний підхід: використовуємо приблизні перцентилі для визначення квінтилів
+        # Це більш ефективно для великих датасетів
+        
+        # Обчислюємо порогові значення для квінтилів
+        percentiles = filtered_users.select(
+            percentile_approx("User_Total_Completed", [0.2, 0.4, 0.6, 0.8], lit(10000)).alias("percentiles")
+        ).collect()[0]["percentiles"]
+        
+        p20, p40, p60, p80 = percentiles[0], percentiles[1], percentiles[2], percentiles[3]
+        
+        # Призначаємо квінтилі на основі порогових значень
+        result = filtered_users \
+            .withColumn("quintile",
+                when(col("User_Total_Completed") >= p80, lit(1))
+                .when(col("User_Total_Completed") >= p60, lit(2))
+                .when(col("User_Total_Completed") >= p40, lit(3))
+                .when(col("User_Total_Completed") >= p20, lit(4))
+                .otherwise(lit(5))
+            ) \
+            .select(
+                "User_SK",
+                "User_ID",
+                "Username",
+                "User_Total_Completed",
+                "quintile"
+            )
+        
+        print("\nСтатистика по квінтилям (приблизна):")
+        quintile_stats = result \
+            .groupBy("quintile") \
+            .agg(
+                count("*").alias("users_count"),
+                avg("User_Total_Completed").alias("avg_completed"),
+                spark_sum("User_Total_Completed").alias("total_completed")
+            ) \
+            .orderBy("quintile")
+        
+        quintile_stats.show(truncate=False)
+        
+        print("\nПерші 20 користувачів з найбільшою кількістю переглянутих (квінтиль 1 = хардкорні):")
+        result.filter(col("quintile") == 1).orderBy(col("User_Total_Completed").desc()).show(20, truncate=False)
+    
+    return result
+
+
+def run_oskar_questions(fact_ratings, dim_user, dim_anime, dim_date, results_path="results"):
+    """
+    Запускає всі бізнес-питання від Oskar та зберігає результати у CSV.
+    
+    Args:
+        fact_ratings: DataFrame з таблицею фактів
+        dim_user: DataFrame з виміром користувачів
+        dim_anime: DataFrame з виміром аніме
+        dim_date: DataFrame з виміром дати
+        results_path: Шлях для збереження результатів
+    """
+    print("\n" + "=" * 60)
+    print("📊 БІЗНЕС-ПИТАННЯ ВІД OSKAR")
+    print("=" * 60)
+    
+    results = {}
+    
+    try:
+        # Питання 1: Filters
+        results['oskar_q1'] = question_1_oskar(fact_ratings, dim_user, dim_anime, dim_date)
+        
+        # Питання 2: JOIN
+        results['oskar_q2'] = question_2_oskar(fact_ratings, dim_user, dim_anime, dim_date)
+        
+        # Питання 3: GROUP BY
+        results['oskar_q3'] = question_3_oskar(fact_ratings, dim_user, dim_anime, dim_date)
+        
+        # Питання 4: GROUP BY
+        results['oskar_q4'] = question_4_oskar(fact_ratings, dim_user, dim_anime, dim_date)
+        
+        # Питання 5: GROUP BY
+        results['oskar_q5'] = question_5_oskar(fact_ratings, dim_user, dim_anime, dim_date)
+        
+        # Питання 6: Window Functions
+        results['oskar_q6'] = question_6_oskar(fact_ratings, dim_user, dim_anime, dim_date)
+        
+        # Зберігаємо результати у CSV
+        print("\n" + "=" * 60)
+        print("💾 ЗБЕРЕЖЕННЯ РЕЗУЛЬТАТІВ У CSV")
+        print("=" * 60)
+        
+        import os
+        os.makedirs(results_path, exist_ok=True)
+        
+        for key, df in results.items():
+            try:
+                output_file = f"{results_path}/{key}.csv"
+                # Використовуємо coalesce(1) для створення одного файлу
+                df.coalesce(1).write.mode("overwrite").option("header", "true").csv(output_file)
+                print(f"✅ Збережено: {output_file}")
+            except Exception as e:
+                print(f"⚠️  Помилка збереження {key}: {e}")
+        
+        print(f"\n✅ Всі результати збережено в папці: {results_path}/")
+        
+    except Exception as e:
+        print(f"❌ Помилка при виконанні питань від Oskar: {str(e)}")
         import traceback
         traceback.print_exc()
     
