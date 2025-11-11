@@ -1,1 +1,174 @@
-# anime-spark-project
+# Anime Spark Project
+
+Проект для аналізу датасету аніме за допомогою Apache Spark та зірчастої схеми даних.
+
+## 📋 Опис
+
+Цей проект створює зірчасту схему даних (Star Schema) для аналізу аніме датасету, що включає:
+- **Dim_User** - вимір користувачів (731,290 користувачів)
+- **Dim_Anime** - вимір аніме (40,779 аніме)
+- **Dim_Date** - вимір дати (9,497 дат)
+- **Fact_UserRatings** - таблиця фактів з оцінками (23,866,768 оцінок)
+
+## 🚀 Швидкий старт
+
+### Вимоги
+
+- Docker Desktop встановлений та запущений
+- Дані датасету в папці `data/`
+
+### Запуск через Docker
+
+1. **Переконайтеся, що Docker запущений**
+
+2. **Зберіть Docker образ** (якщо ще не зібрано):
+   ```bash
+   docker build -t my-spark-img .
+   ```
+
+3. **Запустіть створення зірчастої схеми**:
+   ```bash
+   docker run --rm -v "$(pwd):/app" -w /app my-spark-img python main.py
+   ```
+
+   Або використайте скрипт:
+   ```bash
+   ./run_docker.sh
+   ```
+
+### Що відбувається при запуску
+
+1. ✅ Створюється зірчаста схема даних
+2. ✅ Перевіряється структура створених вимірів
+3. ✅ Схема зберігається у Parquet форматі (опціонально)
+4. ✅ Готова до використання для бізнес-питань
+
+## 📁 Структура проекту
+
+```
+anime-spark-project/
+├── data/                    # Сирі дані датасету (не в Git)
+│   ├── anime-dataset-2023.csv
+│   ├── users-details-2023.csv
+│   ├── users-score-2023.csv
+│   └── ...
+├── data_extraction.py       # Модуль для створення зірчастої схеми
+├── main.py                  # Головний файл для запуску
+├── Dockerfile               # Конфігурація Docker образу
+├── requirements.txt         # Python залежності
+└── README.md               # Цей файл
+```
+
+## 🔧 Технології
+
+- **Apache Spark 3.4.1** - для обробки великих даних
+- **PySpark** - Python API для Spark
+- **Docker** - для контейнеризації
+- **Python 3.9** - мова програмування
+
+## 📊 Зірчаста схема даних
+
+### Dim_User (Вимір користувачів)
+- User_SK, User_ID, Username, Gender, Birthday, Location, Joined_Date
+- User_Mean_Score, User_Total_Completed, та інші атрибути
+
+### Dim_Anime (Вимір аніме)
+- Anime_SK, Anime_ID, Name, English_Name, Type, Source, Genres
+- Studios, Avg_Score, Popularity_Rank, Episodes, Age_Rating
+
+### Dim_Date (Вимір дати)
+- Date_SK, Full_Date, Year, Quarter, Month, Month_Name
+- Day_of_Week, Is_Weekend
+
+### Fact_UserRatings (Таблиця фактів)
+- User_SK, Anime_SK, Date_SK
+- User_Rating, Rating_Deviation, Is_Above_Average
+- Is_High_Rating, Is_Low_Rating, Rating_Count
+
+## 💡 Використання
+
+Після створення зірчастої схеми, ви можете використовувати її для бізнес-питань.
+
+### Бізнес-питання
+
+Проект містить модуль `business_questions.py` для виконання бізнес-питань до даних.
+
+#### Структура бізнес-питань
+
+Кожен член команди може додати свої бізнес-питання у файл `business_questions.py`:
+
+1. **Створіть функції для ваших питань** у форматі:
+   ```python
+   def question_N_yourname(fact_ratings, dim_user, dim_anime, dim_date):
+       '''Опис питання'''
+       print("\n" + "=" * 60)
+       print("❓ Питання N від [Ваше ім'я]")
+       print("=" * 60)
+       # Ваш код тут
+       result = ...
+       result.show()
+       return result
+   ```
+
+2. **Створіть функцію для запуску всіх ваших питань**:
+   ```python
+   def run_yourname_questions(fact_ratings, dim_user, dim_anime, dim_date, results_path="results"):
+       '''Запускає всі бізнес-питання від [Ваше ім'я]'''
+       print("\n" + "=" * 60)
+       print("📊 БІЗНЕС-ПИТАННЯ ВІД [ВАШЕ ІМ'Я]")
+       print("=" * 60)
+       results = {}
+       results['yourname_q1'] = question_1_yourname(fact_ratings, dim_user, dim_anime, dim_date)
+       # Додайте інші питання...
+       return results
+   ```
+
+3. **Додайте виклик вашої функції в `main.py`**:
+   ```python
+   from business_questions import run_yourname_questions
+   results_yourname = run_yourname_questions(
+       fact_ratings, dim_user, dim_anime, dim_date,
+       results_path=f"{data_path}/results"
+   )
+   ```
+
+#### Вимоги до бізнес-питань
+
+Згідно з вимогами лабораторної роботи, кожен член команди має створити **6 бізнес-питань**, які включають:
+
+- **Мінімум 3 питання з filters** (фільтрація даних)
+- **Мінімум 2 питання з JOIN** (об'єднання таблиць)
+- **Мінімум 2 питання з GROUP BY** (групування даних)
+- **Мінімум 2 питання з Window Functions** (віконні функції)
+
+#### Результати
+
+Результати всіх бізнес-питань автоматично зберігаються у CSV файли в папці `data/results/`:
+- `artem_q1.csv`, `artem_q2.csv`, ... (для питань від Artem)
+- `yourname_q1.csv`, `yourname_q2.csv`, ... (для ваших питань)
+
+#### Приклад використання зірчастої схеми
+
+```python
+# Приклад бізнес-питання з використанням зірчастої схеми
+result = fact_ratings \
+    .join(dim_anime, on="Anime_SK") \
+    .filter(col("Avg_Score") >= 8) \
+    .groupBy("Type") \
+    .count() \
+    .orderBy("count", ascending=False)
+result.show()
+```
+
+## 📝 Додаткова документація
+
+- [DOCKER_USAGE.md](DOCKER_USAGE.md) - детальна інструкція з використання Docker
+- [GIT_FILES.md](GIT_FILES.md) - інформація про файли в Git
+
+## 👥 Команда
+
+Проект виконується командою для дисципліни "Аналіз Великих даних".
+
+## 📄 Ліцензія
+
+Цей проект створено для навчальних цілей.

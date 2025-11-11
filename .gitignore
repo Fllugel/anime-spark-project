@@ -206,5 +206,17 @@ marimo/_static/
 marimo/_lsp/
 __marimo__/
 
-# Data folder
+# Data folder (сирі дані датасету - не завантажуються в Git)
 data/
+
+# Results folder (результати аналізу - згідно з вимогами лабораторної)
+results/
+output/
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
