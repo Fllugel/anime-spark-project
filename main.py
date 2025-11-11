@@ -1,21 +1,9 @@
-"""
-Головний файл для створення зірчастої схеми даних та виконання бізнес-питань.
-"""
-
-try:
-    from pyspark.sql import SparkSession
-    from pyspark.sql.types import StructType, StructField, IntegerType, StringType, DoubleType
-    SPARK_AVAILABLE = True
-except ImportError:
-    SPARK_AVAILABLE = False
-    print("⚠️  PySpark недоступний локально, використовую pandas як альтернативу")
-
 from data_extraction import (
     create_star_schema,
     save_star_schema_to_parquet,
     load_star_schema_from_parquet
 )
-from business_questions import run_artem_questions, run_bohdan_questions
+from business_questions import run_artem_questions, run_bohdan_questions, run_oskar_questions # ⬅️ ОБИДВІ ФУНКЦІЇ ІМПОРТОВАНО
 
 
 def main():
@@ -32,7 +20,17 @@ def main():
             .config("spark.executor.extraJavaOptions", "--add-opens=java.base/java.nio=ALL-UNNAMED --add-opens=java.base/sun.nio.ch=ALL-UNNAMED") \
             .config("spark.sql.legacy.timeParserPolicy", "LEGACY") \
             .config("spark.sql.parquet.datetimeRebaseModeInWrite", "LEGACY") \
+            .config("spark.driver.memory", "2g") \
+            .config("spark.executor.memory", "2g") \
+            .config("spark.sql.execution.arrow.pyspark.enabled", "false") \
+            .config("spark.sql.adaptive.enabled", "true") \
+            .config("spark.sql.adaptive.coalescePartitions.enabled", "true") \
+            .config("spark.serializer", "org.apache.spark.serializer.KryoSerializer") \
+            .config("spark.sql.execution.arrow.maxRecordsPerBatch", "1000") \
             .getOrCreate()
+        
+        # Налаштовуємо рівень логування для приховування попереджень про Window operations
+        spark.sparkContext.setLogLevel("ERROR")
 
         try:
             # Шлях до даних (працює як локально, так і в Docker з монтованим volume)
@@ -82,7 +80,7 @@ def main():
                     output_path=f"{data_path}/star_schema"
                 )
             except Exception as e:
-                print(f"⚠️  Не вдалося зберегти у Parquet: {e}")
+                print(f"⚠️  Не вдалося зберегти у Parquet: {e}")
             
             print("\n" + "=" * 60)
             print("❓ БІЗНЕС-ПИТАННЯ")
@@ -98,8 +96,14 @@ def main():
                 results_path=f"{data_path}/results"
             )
             
-            # Бізнес-питання від Bohdan (Аналітик 2)
+            # Бізнес-питання від Bohdan (Аналітик 2) ⬅️ ДОДАНО ВИКЛИК БОГДАНА
             results_bohdan = run_bohdan_questions(
+                fact_ratings, dim_user, dim_anime, dim_date,
+                results_path=f"{data_path}/results"
+            )
+
+            # Бізнес-питання від Oskar ⬅️ ДОДАНО ВИКЛИК ОСКАРА
+            results_oskar = run_oskar_questions(
                 fact_ratings, dim_user, dim_anime, dim_date,
                 results_path=f"{data_path}/results"
             )
@@ -124,7 +128,7 @@ def main():
             spark.stop()
     else:
         print("❌ PySpark недоступний. Будь ласка, використовуйте Docker для запуску.")
-        print("   Запустіть: docker run -v \"$(pwd)/data:/app/data\" my-spark-img")
+        print("   Запустіть: docker run -v \"$(pwd)/data:/app/data\" my-spark-img")
 
 
 if __name__ == "__main__":
