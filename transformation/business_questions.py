@@ -860,7 +860,7 @@ def run_oskar_questions(fact_ratings, dim_user, dim_anime, dim_date, results_pat
         return results
 
 3. Імпортуйте та викличте вашу функцію в main.py:
-    from business_questions import run_yourname_questions
+    from transformation.business_questions import run_yourname_questions
     results_yourname = run_yourname_questions(
         fact_ratings, dim_user, dim_anime, dim_date,
         results_path=f"{data_path}/results"

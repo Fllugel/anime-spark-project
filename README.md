@@ -75,15 +75,21 @@ anime-spark-project/
 ├── scripts/                 # Скрипти для запуску
 │   ├── run_docker.sh        # Скрипт запуску для Mac/Linux
 │   └── run_docker.bat       # Скрипт запуску для Windows
-├── transformation/          # Модулі трансформації даних
+├── transformation/          # Модулі трансформації та бізнес-логіки даних
 │   ├── dataset_info.py      # Інформація про датасет
-│   └── numeric_statistics.py # Статистика числових полів
+│   ├── numeric_statistics.py # Статистика числових полів
+│   ├── data_extraction.py   # Створення зірчастої схеми (Dim_* + Fact_UserRatings)
+│   └── business_questions.py # Бізнес-питання та аналітика на зірчастій схемі
+├── data_analysis/           # Підготовка ML-датасетів та ML-аналіз
+│   ├── prepare_ml_datasets.py          # PySpark-пайплайн: регресія + класифікація
+│   ├── prepare_classification_dataset.py # Альтернативна Pandas-підготовка класифікації
+│   ├── regression_modeling.py          # (заглушка) моделі регресії
+│   ├── classification_modeling.py      # (заглушка) моделі класифікації
+│   └── ML_DATASETS_DATA_CARD.md        # Data card для ML-датасетів
 ├── contribution/            # Внески членів команди
 ├── output/                  # Результати виконання
 │   └── results/             # CSV файли з результатами
-├── main.py                  # Головний файл для запуску
-├── business_questions.py    # Бізнес-питання та аналітика
-├── data_extraction.py       # Модуль для створення зірчастої схеми
+├── main.py                  # Головний файл для запуску (меню стадій пайплайну)
 ├── requirements.txt         # Python залежності
 ├── README.md                # Цей файл
 └── DOCKER_USAGE.md          # Детальна інструкція з Docker
@@ -121,7 +127,7 @@ anime-spark-project/
 
 ### Бізнес-питання
 
-Проект містить модуль `business_questions.py` для виконання бізнес-питань до даних.
+Проект містить модуль `transformation/business_questions.py` для виконання бізнес-питань до даних.
 
 #### Структура бізнес-питань
 
@@ -153,9 +159,9 @@ anime-spark-project/
        return results
    ```
 
-3. **Додайте виклик вашої функції в `main.py`**:
+3. **Додайте виклик вашої функції в `main.py`** (або окремий сценарій, якщо потрібно):
    ```python
-   from business_questions import run_yourname_questions
+   from transformation.business_questions import run_yourname_questions
    results_yourname = run_yourname_questions(
        fact_ratings, dim_user, dim_anime, dim_date,
        results_path=f"{data_path}/results"
