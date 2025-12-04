@@ -189,13 +189,11 @@ def run_regression_modeling(data_path: str = "data") -> None:
     results_df = evaluate_models(X_train, y_train, X_test, y_test, models_dir=models_path)
     
     # 4. Show Final Leaderboard
-    print("\n🏆 ТОП-5 МОДЕЛЕЙ (за RMSE):")
-    print(results_df.head(5).to_string(index=False))
+    print("\n🏆 ТОП-3 МОДЕЛЕЙ (за RMSE):")
+    print(results_df.head(3).to_string(index=False))
     
     # 5. Save results (optional)
     results_path = os.path.join(data_path, "results", "regression_leaderboard.csv")
     os.makedirs(os.path.dirname(results_path), exist_ok=True)
     results_df.to_csv(results_path, index=False)
     print(f"\n📄 Повні результати збережено в: {results_path}")
-    
-    print("\n💡 Наступний крок: Оберіть 3 найкращі моделі та залиште тільки їх у коді.")
