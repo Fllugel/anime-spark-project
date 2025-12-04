@@ -830,6 +830,212 @@ def run_oskar_questions(fact_ratings, dim_user, dim_anime, dim_date, results_pat
 
 
 # ============================================================================
+# РОЗШИРЕНІ ПИТАННЯ ВІД ARII
+# ============================================================================
+
+def question_1_arii_sunrise(dim_anime):
+    """
+    (Filters) Знайти всі аніме студії "Sunrise", які мають Avg_Score > 8.5.
+    Повертає (Anime_SK, Anime_ID, Name, Type, Studios, Avg_Score, Popularity_Rank).
+    """
+    print("\n" + "=" * 60)
+    print("❓ ARII — Питання 1 (Filters) — Sunrise, Avg_Score > 8.5")
+    print("=" * 60)
+
+    result = dim_anime \
+        .filter(
+            (col("Studios").isNotNull()) &
+            (col("Studios").contains("Sunrise")) &
+            (col("Avg_Score").cast("double") > 8.5)
+        ) \
+        .select("Anime_SK", "Anime_ID", "Name", "Type", "Studios", "Avg_Score", "Popularity_Rank") \
+        .orderBy(col("Avg_Score").desc(), col("Popularity_Rank").asc_nulls_last())
+
+    total = result.count()
+    print(f"\nЗнайдено {total} аніме (Sunrise, Avg_Score > 8.5)")
+    result.show(50, truncate=False)
+    return result
+
+
+def question_2_arii_users_usa_recent(dim_user):
+    """
+    (Filters) Список користувачів, які зареєструвалися після 2022-01-01 і знаходяться в 'USA'.
+    Повертає (User_SK, User_ID, Username, Joined_Date, Location).
+    """
+    from pyspark.sql.functions import to_date, lit
+
+    print("\n" + "=" * 60)
+    print("❓ ARII — Питання 2 (Filters) — Joined_Date > 2022-01-01 і Location = 'USA'")
+    print("=" * 60)
+
+    result = dim_user \
+        .filter(
+            (col("Location").isNotNull()) &
+            (col("Location") == "USA") &
+            (to_date(col("Joined_Date")).isNotNull()) &
+            (to_date(col("Joined_Date")) > lit("2022-01-01"))
+        ) \
+        .select("User_SK", "User_ID", "Username", "Joined_Date", "Location") \
+        .orderBy(to_date(col("Joined_Date")).asc())
+
+    total = result.count()
+    print(f"\nЗнайдено {total} користувачів (USA, Joined_Date > 2022-01-01)")
+    result.show(50, truncate=False)
+    return result
+
+
+def question_3_arii_r17_lt10(dim_anime):
+    """
+    (Filters) Порахуй, скільки аніме мають Age_Rating = 'R - 17+' і Episodes < 10.
+    Повертає маленький DataFrame з одним числом total_anime_r17_lt10.
+    """
+    print("\n" + "=" * 60)
+    print("❓ ARII — Питання 3 (Filters) — Age_Rating = 'R - 17+' і Episodes < 10")
+    print("=" * 60)
+
+    filtered = dim_anime \
+        .filter(
+            (col("Age_Rating").isNotNull()) &
+            (col("Age_Rating") == "R - 17+") &
+            (col("Episodes").isNotNull()) &
+            (col("Episodes").cast("double") < 10)
+        )
+
+    total = filtered.count()
+    print(f"\nЗнайдено {total} аніме з Age_Rating='R - 17+' і Episodes < 10")
+
+    # Повертаємо DataFrame з одним рядком для збереження у CSV
+    total_df = dim_anime.sparkSession.createDataFrame(
+        [(total,)], ["total_anime_r17_lt10"]
+    )
+    total_df.show(truncate=False)
+    return total_df
+
+
+def question_4_arii_cowboy10(fact_ratings, dim_user, dim_anime):
+    """
+    (JOIN) Вивести імена користувачів, які поставили оцінку 10 аніме 'Cowboy Bebop'.
+    Повертає (User_SK, User_ID, Username, Anime_ID, Name, User_Rating).
+    """
+    print("\n" + "=" * 60)
+    print("❓ ARII — Питання 4 (JOIN) — Users who rated 10 for 'Cowboy Bebop'")
+    print("=" * 60)
+
+    target_anime = dim_anime.filter(col("Name") == "Cowboy Bebop").select("Anime_SK", "Anime_ID", "Name")
+    result = fact_ratings \
+        .join(target_anime, on="Anime_SK", how="inner") \
+        .filter(col("User_Rating").cast("double") == 10) \
+        .join(dim_user.select("User_SK", "User_ID", "Username"), on="User_SK", how="inner") \
+        .select("User_SK", "User_ID", "Username", "Anime_ID", "Name", "User_Rating") \
+        .distinct() \
+        .orderBy("Username")
+
+    total = result.count()
+    print(f"\nЗнайдено {total} користувачів, які поставили 10 для 'Cowboy Bebop'")
+    result.show(50, truncate=False)
+    return result
+
+
+def question_5_arii_avg_by_genre(fact_ratings, dim_anime):
+    """
+    (GROUP BY) Яка середня оцінка користувача (AVG(Fact.User_Rating)) для кожного жанру.
+    Розкладаємо поле Genres (comma-separated), очищуємо і групуємо по жанру.
+    Повертає (genre, avg_user_rating, rated_count).
+    """
+    from pyspark.sql.functions import split, explode, trim, lower
+
+    print("\n" + "=" * 60)
+    print("❓ ARII — Питання 5 (GROUP BY) — AVG(User_Rating) per genre")
+    print("=" * 60)
+
+    # З'єднуємо факт-таблицю з метаданими аніме
+    joined = fact_ratings.join(dim_anime.select("Anime_SK", "Genres"), on="Anime_SK", how="inner") \
+        .filter(col("Genres").isNotNull() & (length(col("Genres")) > 0))
+
+    # Розділяємо жанри та вибухаємо в окремі рядки
+    exploded = joined.withColumn("genre", explode(split(col("Genres"), ","))) \
+                     .withColumn("genre", trim(col("genre")))
+
+    # Агрегуємо
+    result = exploded \
+        .groupBy("genre") \
+        .agg(
+            avg(col("User_Rating").cast("double")).alias("avg_user_rating"),
+            count("*").alias("rated_count")
+        ) \
+        .filter(col("genre").isNotNull() & (length(col("genre")) > 0)) \
+        .orderBy(col("avg_user_rating").desc())
+
+    print("\nТоп жанрів за середнім рейтингом (за спаданням):")
+    result.show(50, truncate=False)
+    return result
+
+
+def question_6_arii_rank_within_type(dim_anime):
+    """
+    (Window Functions) Проранжувати всі аніме в межах їхнього Type на основі Avg_Score DESC.
+    Додаємо колонку 'type_rank'.
+    Повертає (Type, Anime_SK, Anime_ID, Name, Avg_Score, type_rank).
+    """
+    from pyspark.sql import Window
+    from pyspark.sql.functions import row_number
+
+    print("\n" + "=" * 60)
+    print("❓ ARII — Питання 6 (Window) — Rank within Type by Avg_Score DESC")
+    print("=" * 60)
+
+    window_spec = Window.partitionBy("Type").orderBy(col("Avg_Score").cast("double").desc_nulls_last())
+
+    result = dim_anime \
+        .filter(col("Type").isNotNull() & col("Avg_Score").isNotNull()) \
+        .withColumn("type_rank", row_number().over(window_spec)) \
+        .select("Type", "Anime_SK", "Anime_ID", "Name", "Avg_Score", "type_rank") \
+        .orderBy("Type", "type_rank")
+
+    print("\nПерші 100 рядків (ранжування в межах Type):")
+    result.show(100, truncate=False)
+    return result
+
+
+def run_arii_extended_questions(fact_ratings, dim_user, dim_anime, dim_date, results_path="results/arii_extended"):
+    """
+    Запускає всі розширені питання ARII та зберігає результати у CSV.
+    """
+    print("\n" + "=" * 60)
+    print("📊 ARII — РОЗШИРЕНІ БІЗНЕС-ПИТАННЯ")
+    print("=" * 60)
+
+    results = {}
+    try:
+        results['arii_sunrise_gt85'] = question_1_arii_sunrise(dim_anime)
+        results['arii_users_usa_recent'] = question_2_arii_users_usa_recent(dim_user)
+        results['arii_r17_lt10_total'] = question_3_arii_r17_lt10(dim_anime)
+        results['arii_cowboy10_users'] = question_4_arii_cowboy10(fact_ratings, dim_user, dim_anime)
+        results['arii_avg_by_genre'] = question_5_arii_avg_by_genre(fact_ratings, dim_anime)
+        results['arii_rank_within_type'] = question_6_arii_rank_within_type(dim_anime)
+
+        import os
+        os.makedirs(results_path, exist_ok=True)
+
+        for key, df in results.items():
+            try:
+                output_file = f"{results_path}/{key}.csv"
+                # Якщо df — None або не DataFrame, буде виключення
+                df.coalesce(1).write.mode("overwrite").option("header", "true").csv(output_file)
+                print(f"✅ Збережено: {output_file}")
+            except Exception as e:
+                print(f"⚠️  Помилка збереження {key}: {e}")
+
+        print(f"\n✅ Всі доступні результати збережено в: {results_path}/")
+    except Exception as e:
+        print(f"❌ Помилка при виконанні розширених питань ARII: {e}")
+        import traceback
+        traceback.print_exc()
+
+    return results
+
+
+# ============================================================================
 # ТУТ МОЖУТЬ ДОДАВАТИСЯ ПИТАННЯ ВІД ІНШИХ ЧЛЕНІВ КОМАНДИ
 # ============================================================================
 
@@ -860,7 +1066,7 @@ def run_oskar_questions(fact_ratings, dim_user, dim_anime, dim_date, results_pat
         return results
 
 3. Імпортуйте та викличте вашу функцію в main.py:
-    from business_questions import run_yourname_questions
+    from transformation.business_questions import run_yourname_questions
     results_yourname = run_yourname_questions(
         fact_ratings, dim_user, dim_anime, dim_date,
         results_path=f"{data_path}/results"

@@ -96,7 +96,7 @@ def describe_dataset(df: DataFrame) -> dict:
     return info
 
 
-def save_dataset_info(info: dict, output_dir: str = "output/results") -> str:
+def save_dataset_info(info: dict, output_dir: str = "data/results") -> str:
     """
     Зберігає інформацію про датасет у JSON файл.
 
@@ -126,7 +126,7 @@ def save_dataset_info(info: dict, output_dir: str = "output/results") -> str:
     return output_path
 
 
-def run_dataset_info_analysis(df: DataFrame, output_dir: str = "output/results") -> dict:
+def run_dataset_info_analysis(df: DataFrame, output_dir: str = "data/results") -> dict:
     """
     Запускає повний аналіз інформації про датасет.
 
