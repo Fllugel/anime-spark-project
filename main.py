@@ -5,6 +5,13 @@ from data_extraction import (
 )
 from business_questions import run_artem_questions, run_bohdan_questions, run_oskar_questions # ⬅️ ОБИДВІ ФУНКЦІЇ ІМПОРТОВАНО
 
+# Перевірка доступності PySpark
+try:
+    from pyspark.sql import SparkSession
+    SPARK_AVAILABLE = True
+except ImportError:
+    SPARK_AVAILABLE = False
+
 
 def main():
     """
