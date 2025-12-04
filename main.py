@@ -4,6 +4,8 @@ from data_extraction import (
     load_star_schema_from_parquet
 )
 from business_questions import run_artem_questions, run_bohdan_questions, run_oskar_questions # ⬅️ ОБИДВІ ФУНКЦІЇ ІМПОРТОВАНО
+from transformation.dataset_info import run_dataset_info_analysis
+from transformation.numeric_statistics import run_numeric_statistics_analysis
 
 # Перевірка доступності PySpark
 try:
@@ -87,7 +89,28 @@ def main():
                     output_path=f"{data_path}/star_schema"
                 )
             except Exception as e:
-                print(f"⚠️  Не вдалося зберегти у Parquet: {e}")
+                print(f"⚠️  Не вдалося зберегти у Parquet: {e}")
+            
+            # Трансформація та аналіз даних
+            print("\n" + "=" * 60)
+            print("🔄 ТРАНСФОРМАЦІЯ ТА АНАЛІЗ ДАНИХ")
+            print("=" * 60)
+            
+            # Завантажуємо оригінальний датасет аніме для трансформації
+            anime_dataset_path = f"{data_path}/anime-dataset-2023.csv"
+            df_anime_original = spark.read.csv(anime_dataset_path, header=True, inferSchema=True)
+            
+            # Запускаємо аналіз інформації про датасет
+            dataset_info = run_dataset_info_analysis(
+                df_anime_original,
+                output_dir=f"{data_path}/results"
+            )
+            
+            # Запускаємо аналіз статистики числових стовпців
+            numeric_stats, numeric_analysis = run_numeric_statistics_analysis(
+                df_anime_original,
+                output_dir=f"{data_path}/results"
+            )
             
             print("\n" + "=" * 60)
             print("❓ БІЗНЕС-ПИТАННЯ")
