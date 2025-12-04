@@ -10,6 +10,7 @@ from transformation.business_questions import (
     run_artem_questions,
     run_bohdan_questions,
     run_oskar_questions,
+    run_arii_extended_questions,
 )
 from transformation.dataset_info import run_dataset_info_analysis
 from transformation.numeric_statistics import run_numeric_statistics_analysis
@@ -248,6 +249,7 @@ def run_business_questions_flow(spark: "SparkSession", data_path: str = DATA_PAT
     run_artem_questions(fact_ratings, dim_user, dim_anime, dim_date, results_path)
     run_bohdan_questions(fact_ratings, dim_user, dim_anime, dim_date, results_path)
     run_oskar_questions(fact_ratings, dim_user, dim_anime, dim_date, results_path)
+    run_arii_extended_questions(fact_ratings, dim_user, dim_anime, dim_date, results_path)
 
     print("\n✅ Усі бізнес-питання виконано.")
 
