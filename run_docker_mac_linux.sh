@@ -27,7 +27,7 @@ echo
 echo "Current directory will be mounted into /app inside the container."
 echo
 
-docker run --rm \
+docker run --rm -it \
   -v "$(pwd)":/app \
   -w /app \
   "${IMAGE_NAME}" \

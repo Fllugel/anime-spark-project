@@ -1,18 +1,22 @@
-FROM python:3.9-slim
+FROM eclipse-temurin:11-jre-jammy
 
 LABEL maintainer="Anime Spark Project"
-LABEL description="Single-node PySpark environment for Anime Spark app"
+LABEL description="Single-node PySpark environment for Anime Spark app (Java 11 + Python 3.9)"
 
 # -----------------------------------------------------------------------------
-# System dependencies: Java (for Spark), basic tools
-# Use default-jre-headless so it works on newer Debian (e.g. trixie)
+# System dependencies: Python, basic tools
 # -----------------------------------------------------------------------------
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-        default-jre-headless \
+        python3 \
+        python3-pip \
         ca-certificates \
         bash \
+        procps \
     && rm -rf /var/lib/apt/lists/*
+
+# Ensure `python` command is available and points to Python 3
+RUN ln -s /usr/bin/python3 /usr/local/bin/python
 
 ENV PYSPARK_PYTHON=python
 
