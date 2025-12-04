@@ -183,7 +183,7 @@ def analyze_numeric_columns(df: DataFrame, statistics: dict = None) -> dict:
     return analysis
 
 
-def save_numeric_statistics(statistics: dict, analysis: dict, output_dir: str = "output/results"):
+def save_numeric_statistics(statistics: dict, analysis: dict, output_dir: str = "data/results"):
     """
     Зберігає статистику та аналіз числових стовпців у файли.
 
@@ -229,7 +229,7 @@ def save_numeric_statistics(statistics: dict, analysis: dict, output_dir: str = 
     print(f"✅ Статистика збережена у CSV: {csv_path}")
 
 
-def run_numeric_statistics_analysis(df: DataFrame, output_dir: str = "output/results") -> tuple:
+def run_numeric_statistics_analysis(df: DataFrame, output_dir: str = "data/results") -> tuple:
     """
     Запускає повний аналіз статистики числових стовпців.
 
