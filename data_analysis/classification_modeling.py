@@ -1,22 +1,32 @@
-"""
-Заглушка для стадії ML-класифікації.
-
-Працює з уже підготовленими датасетами у `data/ml_datasets/classification`.
-У майбутньому тут можна реалізувати повний пайплайн тренування / оцінки моделей.
-"""
-
 import os
-from typing import Optional
+import time
+import warnings
+from typing import Optional, Tuple, Any, List
+import joblib
 
 import pandas as pd
+import numpy as np
+
+from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+
+from sklearn.metrics import (
+    accuracy_score,
+    f1_score,
+    precision_score,
+    recall_score,
+    classification_report
+)
+
+from sklearn.exceptions import ConvergenceWarning
+
+warnings.filterwarnings("ignore", category=ConvergenceWarning)
 
 
-def _load_split(
-    base_path: str, split_name: str = "train", prefer_parquet: bool = True
-) -> Optional[pd.DataFrame]:
-    """
-    Завантажує один з датасетів (train / validation / test), якщо він існує.
-    """
+# ============================================================
+# Завантаження train/test
+# ============================================================
+def _load_split(base_path: str, split_name: str = "train", prefer_parquet: bool = True) -> Optional[pd.DataFrame]:
     parquet_path = os.path.join(base_path, f"{split_name}.parquet")
     csv_path = os.path.join(base_path, f"{split_name}.csv")
 
@@ -30,52 +40,135 @@ def _load_split(
     return None
 
 
+# ============================================================
+# Три моделі: базова → середня → найкраща
+# ============================================================
+def get_models() -> List[Tuple[str, Any]]:
+    return [
+        # 1. БАЗОВА МОДЕЛЬ
+        ("Logistic Regression", LogisticRegression(
+            max_iter=2000,
+            n_jobs=-1
+        )),
+
+        # 2. СЕРЕДНЯ МОДЕЛЬ
+        ("Random Forest (n=200)", RandomForestClassifier(
+            n_estimators=200,
+            random_state=42,
+            n_jobs=-1
+        )),
+
+        # 3. НАЙКРАЩА МОДЕЛЬ (бустинг)
+        ("Gradient Boosting", GradientBoostingClassifier(
+            random_state=42
+        )),
+    ]
+
+
+# ============================================================
+# Оцінювання моделей
+# ============================================================
+def evaluate_models(X_train, y_train, X_test, y_test, models_dir: str) -> pd.DataFrame:
+    os.makedirs(models_dir, exist_ok=True)
+
+    results = []
+    models = get_models()
+
+    print("\nПочинаємо оцінювання моделей...")
+    print("-" * 80)
+    print(f"{'Model':<30} | {'Acc':<8} | {'F1':<8} | {'Time (s)':<8} | Status")
+    print("-" * 80)
+
+    for name, model in models:
+        start = time.time()
+
+        safe_name = (
+            name.replace(" ", "_")
+                .replace("(", "")
+                .replace(")", "")
+                .replace("=", "_")
+                .replace(",", "")
+        )
+
+        model_path = os.path.join(models_dir, f"{safe_name}.joblib")
+        status = "Trained"
+
+        try:
+            # Якщо вже є — завантажуємо
+            if os.path.exists(model_path):
+                model = joblib.load(model_path)
+                status = "Loaded"
+            else:
+                model.fit(X_train, y_train)
+                joblib.dump(model, model_path)
+
+            # Прогноз
+            y_pred = model.predict(X_test)
+
+            acc = accuracy_score(y_test, y_pred)
+            f1 = f1_score(y_test, y_pred)
+
+            print(f"{name:<30} | {acc:<8.4f} | {f1:<8.4f} | {time.time() - start:<8.2f} | {status}")
+
+            results.append({
+                "Model": name,
+                "Accuracy": acc,
+                "F1": f1,
+                "Status": status
+            })
+
+        except Exception as e:
+            print(f"{name:<30} | ERROR: {str(e)}")
+
+    print("-" * 80)
+    return pd.DataFrame(results).sort_values("F1", ascending=False)
+
+
+# ============================================================
+# Головна функція
+# ============================================================
 def run_classification_modeling(data_path: str = "data") -> None:
-    """
-    Заглушка для класифікаційного ML-пайплайну.
-
-    На даному етапі:
-    - перевіряє наявність `data/ml_datasets/classification`
-    - завантажує train split
-    - виводить базову інформацію про датасет
-    """
     base_path = os.path.join(data_path, "ml_datasets", "classification")
-
-    if not os.path.exists(base_path):
-        print(
-            "⚠️  Датасет класифікації не знайдено. "
-            "Спочатку підготуйте його через меню (варіант 2)."
-        )
-        return
-
-    df_train = _load_split(base_path, "train")
-    if df_train is None:
-        print(
-            "⚠️  Не вдалося знайти train-спліт для класифікаційного датасету. "
-            "Очікуються файли train.parquet або train.csv."
-        )
-        return
+    models_path = os.path.join(data_path, "models", "classification")
 
     print("\n" + "=" * 60)
-    print("🧪 ML КЛАСИФІКАЦІЯ (заглушка)")
+    print("🧪 ML КЛАСИФІКАЦІЯ: ТРЕНУВАННЯ")
     print("=" * 60)
-    print(f"Форма train-датасету: {df_train.shape}")
+
+    df_train = _load_split(base_path, "train")
+    df_test = _load_split(base_path, "test")
+
+    if df_train is None or df_test is None:
+        print("❌ Не знайдено датасетів train/test.")
+        return
 
     target_col = "gender_encoded"
-    feature_cols = [c for c in df_train.columns if c not in ["user_id", "Gender", target_col]]
+    ignore = ["user_id", "Gender", target_col]
+    feature_cols = [c for c in df_train.columns if c not in ignore]
 
-    print(f"Кількість features: {len(feature_cols)}")
-    print(f"Target колонка: {target_col}")
+    X_train = df_train[feature_cols]
+    y_train = df_train[target_col]
 
-    class_counts = df_train[target_col].value_counts(normalize=True) * 100
-    print("\nРозподіл цільового класу (у %):")
-    for cls, pct in class_counts.sort_index().items():
-        label = "Female" if cls == 1 else "Male"
-        print(f"  {cls} ({label}): {pct:.2f}%")
+    X_test = df_test[feature_cols]
+    y_test = df_test[target_col]
 
-    print(
-        "\nНа цьому етапі модель ще не тренується. "
-        "Тут можна додати пайплайн sklearn / PySpark ML у майбутньому."
-    )
+    # Чистимо пропущені значення
+    if X_train.isnull().sum().sum() > 0:
+        X_train = X_train.fillna(0)
+        X_test = X_test.fillna(0)
 
+    results = evaluate_models(X_train, y_train, X_test, y_test, models_path)
 
+    print("\n🏆 Найкращі моделі:")
+    print(results.head().to_string(index=False))
+
+    # Детальний звіт найкращої моделі
+    print("\n📊 Детальний classification report для найкращої моделі:")
+    best_model_name = results.iloc[0]["Model"]
+    best_model = joblib.load(os.path.join(
+        models_path,
+        best_model_name.replace(" ", "_").replace("(", "").replace(")", "") + ".joblib"
+    ))
+
+    y_pred = best_model.predict(X_test)
+    print(classification_report(y_test, y_pred, target_names=["Male", "Female"]))

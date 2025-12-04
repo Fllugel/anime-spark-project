@@ -17,9 +17,9 @@ from transformation.numeric_statistics import run_numeric_statistics_analysis
 from transformation.raw_data_extraction import run_raw_data_extraction
 from data_analysis.prepare_ml_datasets import (
     prepare_regression_dataset,
-    prepare_classification_dataset,
     split_and_save,
 )
+from data_analysis.prepare_classification_dataset import main as prepare_classification_dataset
 from data_analysis.classification_modeling import run_classification_modeling
 from data_analysis.regression_modeling import run_regression_modeling
 
@@ -174,35 +174,21 @@ def ensure_classification_dataset(
 ) -> None:
     """
     Гарантує наявність ML датасету для класифікації.
-    Використовує PySpark-пайплайн з data_analysis.prepare_ml_datasets.
+    ТЕПЕР ВИКОРИСТОВУЄМО PANDAS-ПАЙПЛАЙН.
     """
-    meta_path = _ml_dataset_meta_path("classification", data_path)
-    output_dir = os.path.dirname(meta_path)
+    meta_path = os.path.join(data_path, "ml_datasets", "classification", "preprocessing_info.json")
 
     if os.path.exists(meta_path):
         print("✅ ML датасет класифікації вже підготовлений.")
         return
 
-    print("\n📦 Підготовка ML датасету для класифікації...")
-    os.makedirs(output_dir, exist_ok=True)
+    print("\n📦 Підготовка ML датасету для класифікації (Pandas)...")
 
-    classification_df = prepare_classification_dataset(
-        spark,
-        ratings_path=os.path.join(data_path, "users-score-2023.csv"),
-        users_path=os.path.join(data_path, "users-details-2023.csv"),
-        anime_path=os.path.join(data_path, "anime-filtered.csv"),
-        output_path=output_dir,
-        min_ratings=10,
-        sample_users=50000,
-    )
+    # 🔥 Запуск Pandas-версії БЕЗ жодних параметрів
+    prepare_classification_dataset()
 
-    split_and_save(
-        classification_df,
-        output_dir,
-        stratify_column="gender_encoded",
-        format_type="both",
-    )
     print("✅ ML датасет для класифікації підготовлено.")
+
 
 
 # ======================================================================
