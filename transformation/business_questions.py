@@ -829,7 +829,9 @@ def run_oskar_questions(fact_ratings, dim_user, dim_anime, dim_date, results_pat
     return results
 
 
-
+# ============================================================================
+# РОЗШИРЕНІ ПИТАННЯ ВІД ARII
+# ============================================================================
 
 def question_1_arii_sunrise(dim_anime):
     """
@@ -1031,3 +1033,77 @@ def run_arii_extended_questions(fact_ratings, dim_user, dim_anime, dim_date, res
         traceback.print_exc()
 
     return results
+
+
+# ============================================================================
+# ТУТ МОЖУТЬ ДОДАВАТИСЯ ПИТАННЯ ВІД ІНШИХ ЧЛЕНІВ КОМАНДИ
+# ============================================================================
+
+"""
+ІНСТРУКЦІЯ ДЛЯ ДОДАВАННЯ СВОЇХ БІЗНЕС-ПИТАНЬ:
+
+1. Створіть функції для ваших питань у форматі:
+    def question_N_yourname(fact_ratings, dim_user, dim_anime, dim_date):
+        '''Опис питання'''
+        print("\n" + "=" * 60)
+        print("❓ Питання N від [Ваше ім'я]")
+        print("=" * 60)
+        # Ваш код тут
+        result = ...
+        result.show()
+        return result
+
+2. Створіть функцію run_yourname_questions() для запуску всіх ваших питань:
+    def run_yourname_questions(fact_ratings, dim_user, dim_anime, dim_date, results_path="results"):
+        '''Запускає всі бізнес-питання від [Ваше ім'я]'''
+        print("\n" + "=" * 60)
+        print("📊 БІЗНЕС-ПИТАННЯ ВІД [ВАШЕ ІМ'Я]")
+        print("=" * 60)
+        results = {}
+        results['yourname_q1'] = question_1_yourname(fact_ratings, dim_user, dim_anime, dim_date)
+        # Додайте інші питання...
+        # Збереження результатів (опціонально)
+        return results
+
+3. Імпортуйте та викличте вашу функцію в main.py:
+    from transformation.business_questions import run_yourname_questions
+    results_yourname = run_yourname_questions(
+        fact_ratings, dim_user, dim_anime, dim_date,
+        results_path=f"{data_path}/results"
+    )
+
+ПРИКЛАД:
+"""
+
+# def question_1_teammate_name(fact_ratings, dim_user, dim_anime, dim_date):
+#     """
+#     (Filters) Приклад питання з фільтрами
+#     """
+#     print("\n" + "=" * 60)
+#     print("❓ Питання 1 від Teammate Name")
+#     print("=" * 60)
+#     
+#     result = fact_ratings \
+#         .filter(col("User_Rating") >= 8) \
+#         .count()
+#     
+#     print(f"Результат: {result}")
+#     return result
+#
+# def run_teammate_name_questions(fact_ratings, dim_user, dim_anime, dim_date, results_path="results"):
+#     """Запускає всі питання від Teammate Name"""
+#     print("\n" + "=" * 60)
+#     print("📊 БІЗНЕС-ПИТАННЯ ВІД TEAMMATE NAME")
+#     print("=" * 60)
+#     
+#     results = {}
+#     results['teammate_q1'] = question_1_teammate_name(fact_ratings, dim_user, dim_anime, dim_date)
+#     
+#     # Збереження результатів
+#     import os
+#     os.makedirs(results_path, exist_ok=True)
+#     for key, df in results.items():
+#         output_file = f"{results_path}/{key}.csv"
+#         df.coalesce(1).write.mode("overwrite").option("header", "true").csv(output_file)
+#     
+#     return results
